@@ -27,12 +27,3 @@ A web-based application for bidirectional data ingestion between ClickHouse and 
     npm run dev
 
 5. **Access** : http://localhost:5173
-
-Features: 
-Bidirectional ingestion (ClickHouse ↔ Flat File).
-Column selection.
-Record count reporting.
-Basic error handling.
-Limitations
-JWT authentication uses token as password (ClickHouse config adjustment needed for proper JWT).
-No multi-table JOIN or data preview implemented.
