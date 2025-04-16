@@ -1,4 +1,3 @@
-// clickhouse-flatfile-tool/handlers/ingestion.go
 package handlers
 
 import (
@@ -7,12 +6,47 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
 	"github.com/gin-gonic/gin"
 )
 
-type Data struct {
-	Price string `gorm:"price"`
+
+// getColumnTypes fetches column types from system.columns
+func getColumnTypes(c *gin.Context, database, table string) (map[string]string, error) {
+	query := `
+		SELECT name, type
+		FROM system.columns
+		WHERE database = ? AND table = ?
+	`
+	rows, err := clickhouseConn.Query(c, query, database, table)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query column types: %v", err)
+	}
+	defer rows.Close()
+
+	columnTypes := make(map[string]string)
+	for rows.Next() {
+		var name, typeStr string
+		if err := rows.Scan(&name, &typeStr); err != nil {
+			return nil, fmt.Errorf("failed to scan column types: %v", err)
+		}
+		switch {
+		case strings.HasPrefix(typeStr, "UInt32"):
+			columnTypes[name] = "UInt32"
+		case strings.HasPrefix(typeStr, "UInt16"):
+			columnTypes[name] = "UInt16"
+		case strings.HasPrefix(typeStr, "UInt8"):
+			columnTypes[name] = "UInt8"
+		case strings.HasPrefix(typeStr, "Float32"):
+			columnTypes[name] = "Float32"
+		case strings.HasPrefix(typeStr, "DateTime"):
+			columnTypes[name] = "DateTime"
+		case strings.HasPrefix(typeStr, "Enum"):
+			columnTypes[name] = "String"
+		default:
+			columnTypes[name] = "String"
+		}
+	}
+	return columnTypes, nil
 }
 
 func IngestData(c *gin.Context) {
@@ -32,27 +66,31 @@ func IngestData(c *gin.Context) {
 		return
 	}
 
+	database := "uk"
+	tableName := req.Table
+	outputTable := req.Output
+	if req.Table == "uk_price_paid" {
+		tableName = "uk.uk_price_paid"
+	}
+	if req.Output == "uk_price_paid_import" {
+		outputTable = "uk.uk_price_paid_import"
+	}
+
 	if req.Source == "clickhouse" && req.Target == "flatfile" {
-		// Map columns to types
-		columnTypes := make(map[string]string)
+		simpleTable := strings.TrimPrefix(tableName, "uk.")
+		columnTypes, err := getColumnTypes(c, database, simpleTable)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
 		for _, col := range req.Columns {
-			switch col {
-			case "price", "AirlineID", "DepartureDelayGroups", "ArrivalDelayGroups":
-				columnTypes[col] = "UInt32"
-			case "Year", "PULocationID", "DOLocationID":
-				columnTypes[col] = "UInt16"
-			case "Quarter", "Month", "DayofMonth", "DayOfWeek", "DistanceGroup", "VendorID", "passenger_count", "RatecodeID", "payment_type":
-				columnTypes[col] = "UInt8"
-			case "DepDelay", "DepDelayMinutes", "ArrDelay", "ArrDelayMinutes", "CRSElapsedTime", "ActualElapsedTime", "AirTime", "Distance", "fare_amount", "extra", "mta_tax", "tip_amount", "tolls_amount", "improvement_surcharge", "total_amount", "congestion_surcharge":
-				columnTypes[col] = "Float32"
-			case "date", "FlightDate", "tpep_pickup_datetime", "tpep_dropoff_datetime":
-				columnTypes[col] = "DateTime"
-			default:
-				columnTypes[col] = "String"
+			if _, exists := columnTypes[col]; !exists {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in table %s", col, tableName)})
+				return
 			}
 		}
 
-		// Prepare query with type casting
 		selectedColumns := make([]string, len(req.Columns))
 		for i, col := range req.Columns {
 			if columnTypes[col] == "DateTime" {
@@ -61,7 +99,7 @@ func IngestData(c *gin.Context) {
 				selectedColumns[i] = col
 			}
 		}
-		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(selectedColumns, ","), req.Table)
+		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(selectedColumns, ","), tableName)
 		rows, err := clickhouseConn.Query(c, query)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -148,6 +186,9 @@ func IngestData(c *gin.Context) {
 			return
 		}
 
+		// Log headers for debugging
+		fmt.Printf("CSV Headers: %v\n", headers)
+
 		colIndices := make([]int, len(req.Columns))
 		for i, col := range req.Columns {
 			found := false
@@ -159,31 +200,28 @@ func IngestData(c *gin.Context) {
 				}
 			}
 			if !found {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in CSV", col)})
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in CSV. Available headers: %v", col, headers)})
 				return
 			}
 		}
 
-		// Map CSV columns to ClickHouse types
-		columnTypes := make(map[string]string)
+		simpleOutputTable := strings.TrimPrefix(outputTable, "uk.")
+		columnTypes, err := getColumnTypes(c, database, simpleOutputTable)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
 		for _, col := range req.Columns {
-			switch col {
-			case "age", "passenger_count", "VendorID", "RatecodeID", "payment_type":
-				columnTypes[col] = "UInt8"
-			case "PULocationID", "DOLocationID":
-				columnTypes[col] = "UInt16"
-			case "fare_amount", "extra", "mta_tax", "tip_amount", "tolls_amount", "improvement_surcharge", "total_amount", "congestion_surcharge", "trip_distance":
-				columnTypes[col] = "Float32"
-			case "tpep_pickup_datetime", "tpep_dropoff_datetime":
-				columnTypes[col] = "DateTime"
-			default:
-				columnTypes[col] = "String"
+			if _, exists := columnTypes[col]; !exists {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in table %s", col, outputTable)})
+				return
 			}
 		}
 
 		placeholders := strings.Repeat("?, ", len(req.Columns))
 		placeholders = placeholders[:len(placeholders)-2]
-		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", req.Output, strings.Join(req.Columns, ","), placeholders)
+		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", outputTable, strings.Join(req.Columns, ","), placeholders)
 
 		count := 0
 		for {
@@ -198,13 +236,18 @@ func IngestData(c *gin.Context) {
 
 			values := make([]interface{}, len(req.Columns))
 			for i, idx := range colIndices {
-				switch columnTypes[req.Columns[i]] {
-				case "UInt8":
-					var val uint8
+				col := req.Columns[i]
+				switch columnTypes[col] {
+				case "UInt32":
+					var val uint32
 					fmt.Sscanf(record[idx], "%d", &val)
 					values[i] = val
 				case "UInt16":
 					var val uint16
+					fmt.Sscanf(record[idx], "%d", &val)
+					values[i] = val
+				case "UInt8":
+					var val uint8
 					fmt.Sscanf(record[idx], "%d", &val)
 					values[i] = val
 				case "Float32":
@@ -212,7 +255,7 @@ func IngestData(c *gin.Context) {
 					fmt.Sscanf(record[idx], "%f", &val)
 					values[i] = val
 				case "DateTime":
-					values[i] = record[idx] // Assumes format like '2019-01-01 00:46:40'
+					values[i] = record[idx]
 				default:
 					values[i] = record[idx]
 				}

@@ -44,4 +44,24 @@ func GetFlatFileColumns(c *gin.Context) {
     }
     c.JSON(http.StatusOK, columns)
 }
-
+/*const handleTableSelect = async (table) => {
+      setSelectedTable(table);
+      setColumns([]);
+      setSelectedColumns([]);
+      setStatus({ message: 'Fetching columns...', type: 'loading' });
+      try {
+          let endpoint;
+          if (sourceType === 'clickhouse') {
+              endpoint = `http://localhost:8080/columns/clickhouse/${table}`;
+          } else {
+              endpoint = `http://localhost:8080/columns/flatfile?filePath=${flatFileConfig.filePath}&delimiter=${flatFileConfig.delimiter}`;
+          }
+          const res = await axios.get(endpoint);
+          // Extract column names, whether from ClickHouse or flatfile
+          const columnList = res.data.map(col => typeof col === 'string' ? col : col.name);
+          setColumns(columnList);
+          setStatus({ message: 'Columns loaded', type: 'success' });
+      } catch (err) {
+          setStatus({ message: `Error: ${err.response?.data?.error || err.message}`, type: 'error' });
+      }
+    };*/

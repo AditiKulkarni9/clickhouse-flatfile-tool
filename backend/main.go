@@ -8,10 +8,16 @@ import (
 )
 
 func main() {
-	r := gin.Default()
+	router := setupRouter()
+	log.Println("Starting server...")
+	router.Run(":8080")
+}
+
+func setupRouter() *gin.Engine {
+	router := gin.Default()
 
 	// Enable CORS for frontend
-	r.Use(func(c *gin.Context) {
+	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type")
@@ -22,15 +28,14 @@ func main() {
 		c.Next()
 	})
 
-	log.Println("Starting server...")
-
 	// Routes
-	r.POST("/connect/clickhouse", handlers.ConnectClickHouse)
-	r.GET("/tables/clickhouse", handlers.GetClickHouseTables)
-	r.GET("/columns/clickhouse/:table", handlers.GetClickHouseColumns)
-	r.POST("/upload/flatfile", handlers.UploadFlatFile)
-	r.GET("/columns/flatfile", handlers.GetFlatFileColumns)
-	r.POST("/ingest", handlers.IngestData)
+	router.POST("/connect/clickhouse", handlers.ConnectClickHouse)
+	router.GET("/tables/clickhouse", handlers.GetClickHouseTables)
+	router.GET("/columns/clickhouse/:table", handlers.GetClickHouseColumns)
+	router.POST("/upload/flatfile", handlers.UploadFlatFile)
+	router.GET("/columns/flatfile", handlers.GetFlatFileColumns)
+	router.POST("/ingest", handlers.IngestData)
+	router.POST("/preview", handlers.PreviewData)
 
-	r.Run(":8080")
+	return router
 }
