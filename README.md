@@ -66,3 +66,5 @@ A robust bidirectional data ingestion tool for seamless data transfer between Cl
 ![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2017.11.09.png)
 
 ![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2017.10.13.png)
+
+![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2017.53.34.png)
