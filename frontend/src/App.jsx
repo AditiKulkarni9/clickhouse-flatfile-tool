@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { FaCheckCircle, FaExclamationTriangle, FaSpinner } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationTriangle, FaSpinner, FaDatabase, FaFileAlt, FaArrowRight } from 'react-icons/fa';
 import './App.css';
 
 function App() {
@@ -136,257 +136,281 @@ function App() {
         (sourceType === 'flatfile' && !flatFileConfig.filePath);
 
     return (
-        <div className="container mx-auto p-6 max-w-4xl bg-gray-100 min-h-screen">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Data Ingestion Tool</h1>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            <div className="container mx-auto p-6 max-w-5xl">
+                <header className="text-center mb-12">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Data Ingestion Tool</h1>
+                    <p className="text-gray-600">Transfer data between ClickHouse and flat files seamlessly</p>
+                </header>
 
-            {/* Source and Target Selection */}
-            <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Step 1: Select Source and Target</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-2">Source</label>
-                        <select
-                            id="source"
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                            onChange={(e) => setSourceType(e.target.value)}
-                            value={sourceType}
-                            aria-describedby="source-help"
-                        >
-                            <option value="">Choose a source</option>
-                            <option value="clickhouse">ClickHouse</option>
-                            <option value="flatfile">Flat File (CSV)</option>
-                        </select>
-                        <p id="source-help" className="text-xs text-gray-500 mt-1">Select where your data is coming from.</p>
+                {/* Status Message */}
+                {status.message && (
+                    <div className={`mb-6 p-4 rounded-lg ${
+                        status.type === 'success' ? 'bg-green-50 text-green-800' :
+                        status.type === 'error' ? 'bg-red-50 text-red-800' :
+                        'bg-blue-50 text-blue-800'
+                    }`}>
+                        <div className="flex items-center">
+                            {status.type === 'success' && <FaCheckCircle className="mr-2" />}
+                            {status.type === 'error' && <FaExclamationTriangle className="mr-2" />}
+                            {status.type === 'loading' && <FaSpinner className="mr-2 animate-spin" />}
+                            <span>{status.message}</span>
+                        </div>
                     </div>
-                    <div>
-                        <label htmlFor="target" className="block text-sm font-medium text-gray-700 mb-2">Target</label>
-                        <select
-                            id="target"
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                            onChange={(e) => setTargetType(e.target.value)}
-                            value={targetType}
-                            aria-describedby="target-help"
-                        >
-                            <option value="">Choose a target</option>
-                            <option value="clickhouse">ClickHouse</option>
-                            <option value="flatfile">Flat File (CSV)</option>
-                        </select>
-                        <p id="target-help" className="text-xs text-gray-500 mt-1">Select where your data will be saved.</p>
-                    </div>
-                </div>
-            </section>
+                )}
 
-            {/* ClickHouse Configuration */}
-            {(sourceType === 'clickhouse' || targetType === 'clickhouse') && (
-                <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Step 2: Configure ClickHouse</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label htmlFor="host" className="block text-sm font-medium text-gray-700 mb-2">Host</label>
-                            <input
-                                id="host"
-                                type="text"
-                                placeholder="e.g., localhost"
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                                value={clickHouseConfig.host}
-                                onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, host: e.target.value })}
-                            />
+                {/* Source and Target Selection */}
+                <section className="mb-8 p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-6">Step 1: Select Source and Target</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <label htmlFor="source" className="block text-sm font-medium text-gray-700">Source</label>
+                            <div className="relative">
+                                <select
+                                    id="source"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                                    onChange={(e) => setSourceType(e.target.value)}
+                                    value={sourceType}
+                                >
+                                    <option value="">Choose a source</option>
+                                    <option value="clickhouse">ClickHouse Database</option>
+                                    <option value="flatfile">Flat File (CSV)</option>
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                                    <FaDatabase className="text-gray-400" />
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-2">Port</label>
-                            <input
-                                id="port"
-                                type="text"
-                                placeholder="e.g., 9000"
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                                value={clickHouseConfig.port}
-                                onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, port: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="database" className="block text-sm font-medium text-gray-700 mb-2">Database</label>
-                            <input
-                                id="database"
-                                type="text"
-                                placeholder="e.g., uk"
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                                value={clickHouseConfig.database}
-                                onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, database: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="user" className="block text-sm font-medium text-gray-700 mb-2">User</label>
-                            <input
-                                id="user"
-                                type="text"
-                                placeholder="e.g., default"
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                                value={clickHouseConfig.user}
-                                onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, user: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="jwtToken" className="block text-sm font-medium text-gray-700 mb-2">JWT Token</label>
-                            <input
-                                id="jwtToken"
-                                type="text"
-                                placeholder="Optional"
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                                value={clickHouseConfig.jwtToken}
-                                onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, jwtToken: e.target.value })}
-                            />
+                        <div className="space-y-4">
+                            <label htmlFor="target" className="block text-sm font-medium text-gray-700">Target</label>
+                            <div className="relative">
+                                <select
+                                    id="target"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                                    onChange={(e) => setTargetType(e.target.value)}
+                                    value={targetType}
+                                >
+                                    <option value="">Choose a target</option>
+                                    <option value="clickhouse">ClickHouse Database</option>
+                                    <option value="flatfile">Flat File (CSV)</option>
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                                    <FaFileAlt className="text-gray-400" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
-            )}
 
-            {/* Flat File Configuration */}
-            {sourceType === 'flatfile' && (
-                <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Step 2: Upload CSV File</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label htmlFor="file" className="block text-sm font-medium text-gray-700 mb-2">CSV File</label>
-                            <input
-                                id="file"
-                                type="file"
-                                accept=".csv"
-                                className="w-full p-3 border rounded-lg"
-                                onChange={handleFileUpload}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="delimiter" className="block text-sm font-medium text-gray-700 mb-2">Delimiter</label>
-                            <input
-                                id="delimiter"
-                                type="text"
-                                placeholder="e.g., ,"
-                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-600"
-                                value={flatFileConfig.delimiter}
-                                onChange={(e) => setFlatFileConfig({ ...flatFileConfig, delimiter: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* Connect Button */}
-            <section className="mb-8 flex justify-center">
-                <button
-                    className={`px-6 py-3 rounded-lg text-white font-medium ${
-                        isConnectDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                    onClick={handleConnect}
-                    disabled={isConnectDisabled}
-                    aria-disabled={isConnectDisabled}
-                >
-                    Connect
-                </button>
-            </section>
-
-            {/* Table Selection */}
-            {tables.length > 0 && sourceType === 'clickhouse' && (
-                <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Step 3: Select Table</h2>
-                    <div className="flex flex-wrap gap-3">
-                        {tables.map((table) => (
-                            <button
-                                key={table.name}
-                                className={`px-4 py-2 rounded-lg border ${
-                                    selectedTable === table.name
-                                        ? 'bg-blue-100 border-blue-600'
-                                        : 'border-gray-300 hover:bg-gray-100'
-                                }`}
-                                onClick={() => handleTableSelect(table.name)}
-                            >
-                                {table.name}
-                            </button>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {/* Load Columns Button */}
-            {selectedTable && (
-                <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        {sourceType === 'flatfile' ? 'Step 3: Load CSV Columns' : 'Step 4: Load Table Columns'}
-                    </h2>
-                    <button
-                        className={`px-6 py-3 rounded-lg text-white font-medium ${
-                            isLoadColumnsDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
-                        }`}
-                        onClick={handleLoadColumns}
-                        disabled={isLoadColumnsDisabled}
-                        aria-disabled={isLoadColumnsDisabled}
-                    >
-                        Load Columns
-                    </button>
-                </section>
-            )}
-
-            {/* Column Selection */}
-            {columns.length > 0 && (
-                <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        {sourceType === 'flatfile' ? 'Step 4: Select Columns' : 'Step 5: Select Columns'}
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {columns.map((col) => (
-                            <label key={col} className="flex items-center space-x-2">
+                {/* ClickHouse Configuration */}
+                {(sourceType === 'clickhouse' || targetType === 'clickhouse') && (
+                    <section className="mb-8 p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-6">Step 2: Configure ClickHouse</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label htmlFor="host" className="block text-sm font-medium text-gray-700">Host</label>
                                 <input
-                                    type="checkbox"
-                                    checked={selectedColumns.includes(col)}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setSelectedColumns([...selectedColumns, col]);
-                                        } else {
-                                            setSelectedColumns(selectedColumns.filter((c) => c !== col));
-                                        }
-                                    }}
-                                    className="h-4 w-4 text-blue-600"
+                                    id="host"
+                                    type="text"
+                                    placeholder="e.g., localhost"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={clickHouseConfig.host}
+                                    onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, host: e.target.value })}
                                 />
-                                <span className="text-gray-700">{col}</span>
-                            </label>
-                        ))}
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="port" className="block text-sm font-medium text-gray-700">Port</label>
+                                <input
+                                    id="port"
+                                    type="text"
+                                    placeholder="e.g., 9000"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={clickHouseConfig.port}
+                                    onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, port: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="database" className="block text-sm font-medium text-gray-700">Database</label>
+                                <input
+                                    id="database"
+                                    type="text"
+                                    placeholder="e.g., uk"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={clickHouseConfig.database}
+                                    onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, database: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="user" className="block text-sm font-medium text-gray-700">User</label>
+                                <input
+                                    id="user"
+                                    type="text"
+                                    placeholder="e.g., default"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={clickHouseConfig.user}
+                                    onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, user: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label htmlFor="jwtToken" className="block text-sm font-medium text-gray-700">JWT Token (Optional)</label>
+                                <input
+                                    id="jwtToken"
+                                    type="password"
+                                    placeholder="Enter JWT token if required"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={clickHouseConfig.jwtToken}
+                                    onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, jwtToken: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-6">
+                            <button
+                                onClick={handleConnect}
+                                disabled={isConnectDisabled}
+                                className={`w-full py-3 px-4 rounded-lg text-white font-medium ${
+                                    isConnectDisabled
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                }`}
+                            >
+                                Connect to ClickHouse
+                            </button>
+                        </div>
+                    </section>
+                )}
+
+                {/* File Upload Section */}
+                {sourceType === 'flatfile' && (
+                    <section className="mb-8 p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-6">Step 2: Upload File</h2>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-center w-full">
+                                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <FaFileAlt className="w-10 h-10 mb-3 text-gray-400" />
+                                        <p className="mb-2 text-sm text-gray-500">
+                                            <span className="font-semibold">Click to upload</span> or drag and drop
+                                        </p>
+                                        <p className="text-xs text-gray-500">CSV files only</p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept=".csv"
+                                        onChange={handleFileUpload}
+                                    />
+                                </label>
+                            </div>
+                            {flatFileConfig.file && (
+                                <div className="text-sm text-gray-600">
+                                    Selected file: {flatFileConfig.file.name}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {/* Table Selection and Column Selection */}
+                <section className="mb-8 p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-6">Step 3: Select Data</h2>
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <label className="block text-sm font-medium text-gray-700">Available Tables</label>
+                                <div className="border border-gray-300 rounded-lg divide-y">
+                                    {tables.map((table) => (
+                                        <button
+                                            key={table.name}
+                                            onClick={() => handleTableSelect(table.name)}
+                                            className={`w-full p-4 text-left hover:bg-gray-50 ${
+                                                selectedTable === table.name ? 'bg-blue-50 text-blue-700' : ''
+                                            }`}
+                                        >
+                                            {table.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-sm font-medium text-gray-700">Available Columns</label>
+                                <div className="border border-gray-300 rounded-lg divide-y max-h-64 overflow-y-auto">
+                                    {columns.map((column) => (
+                                        <label
+                                            key={column}
+                                            className="flex items-center p-4 hover:bg-gray-50 cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedColumns.includes(column)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedColumns([...selectedColumns, column]);
+                                                    } else {
+                                                        setSelectedColumns(selectedColumns.filter(c => c !== column));
+                                                    }
+                                                }}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <span className="ml-3 text-sm text-gray-700">{column}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                onClick={handleLoadColumns}
+                                disabled={isLoadColumnsDisabled}
+                                className={`py-2 px-4 rounded-lg text-white font-medium ${
+                                    isLoadColumnsDisabled
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                }`}
+                            >
+                                Load Columns
+                            </button>
+                            <button
+                                onClick={handlePreview}
+                                disabled={isPreviewDisabled}
+                                className={`py-2 px-4 rounded-lg text-white font-medium ${
+                                    isPreviewDisabled
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2'
+                                }`}
+                            >
+                                Preview Data
+                            </button>
+                        </div>
                     </div>
                 </section>
-            )}
 
-            {/* Preview Button and Table */}
-            {columns.length > 0 && (
-                <section className="mb-8 p-6 bg-white rounded-lg shadow">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        {sourceType === 'flatfile' ? 'Step 5: Preview Data' : 'Step 6: Preview Data'}
-                    </h2>
-                    <button
-                        className={`px-6 py-3 rounded-lg text-white font-medium ${
-                            isPreviewDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
-                        }`}
-                        onClick={handlePreview}
-                        disabled={isPreviewDisabled}
-                        aria-disabled={isPreviewDisabled}
-                    >
-                        Preview
-                    </button>
-                    {previewData && (
-                        <div className="mt-6 overflow-x-auto">
-                            <table className="min-w-full border-collapse border border-gray-300">
-                                <thead>
-                                    <tr className="bg-gray-100">
-                                        {previewData.headers.map((header, index) => (
-                                            <th key={index} className="border border-gray-300 px-4 py-2 text-left text-gray-800">
-                                                {header}
+                {/* Preview Section */}
+                {previewData && (
+                    <section className="mb-8 p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-6">Data Preview</h2>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        {selectedColumns.map((column) => (
+                                            <th
+                                                key={column}
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                            >
+                                                {column}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {previewData.rows.map((row, rowIndex) => (
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {previewData.map((row, rowIndex) => (
                                         <tr key={rowIndex} className="hover:bg-gray-50">
-                                            {row.map((cell, cellIndex) => (
-                                                <td key={cellIndex} className="border border-gray-300 px-4 py-2 text-gray-700">
-                                                    {cell}
+                                            {selectedColumns.map((column) => (
+                                                <td
+                                                    key={column}
+                                                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                                >
+                                                    {row[column]}
                                                 </td>
                                             ))}
                                         </tr>
@@ -394,39 +418,31 @@ function App() {
                                 </tbody>
                             </table>
                         </div>
-                    )}
-                </section>
-            )}
-
-            {/* Ingest Button */}
-            <section className="mb-8 flex justify-center">
-                <button
-                    className={`px-6 py-3 rounded-lg text-white font-medium ${
-                        isIngestDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-                    }`}
-                    onClick={handleIngest}
-                    disabled={isIngestDisabled}
-                    aria-disabled={isIngestDisabled}
-                >
-                    Start Ingestion
-                </button>
-            </section>
-
-            {/* Status and Results */}
-            <section className="p-6 bg-white rounded-lg shadow">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Status</h2>
-                <div className="flex items-center space-x-3">
-                    {status.type === 'loading' && <FaSpinner className="animate-spin text-blue-600" />}
-                    {status.type === 'success' && <FaCheckCircle className="text-green-600" />}
-                    {status.type === 'error' && <FaExclamationTriangle className="text-red-600" />}
-                    <p className={`text-gray-700 ${status.type === 'error' ? 'text-red-600' : ''}`}>
-                        {status.message || 'Ready'}
-                    </p>
-                </div>
-                {recordCount !== null && (
-                    <p className="mt-3 text-gray-700">Records Processed: {recordCount}</p>
+                    </section>
                 )}
-            </section>
+
+                {/* Ingest Button */}
+                <div className="flex justify-center">
+                    <button
+                        onClick={handleIngest}
+                        disabled={isIngestDisabled}
+                        className={`py-4 px-8 rounded-lg text-white font-medium text-lg ${
+                            isIngestDisabled
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2'
+                        }`}
+                    >
+                        {isIngestDisabled ? 'Select Data to Ingest' : 'Start Ingestion'}
+                    </button>
+                </div>
+
+                {/* Record Count */}
+                {recordCount !== null && (
+                    <div className="mt-6 text-center text-gray-600">
+                        Successfully processed {recordCount} records
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

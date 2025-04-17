@@ -56,3 +56,5 @@ A robust bidirectional data ingestion tool for seamless data transfer between Cl
 - Map columns to ClickHouse fields (e.g., price, street, date).
 - Click Preview to verify the data.
 - Click Import to ingest the data into ClickHouse
+
+![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2012.46.51.png)
