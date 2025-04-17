@@ -50,11 +50,17 @@ A robust bidirectional data ingestion tool for seamless data transfer between Cl
 - Select desired columns (e.g., price, postcode1).
 - Click Preview to inspect the data.
 - Click Export to download the CSV file.
-- CSV to ClickHouse Import:
-- Upload a CSV file (e.g., backend/Uploads/uk_price_paid.csv).
-- Click Load Columns to display the CSV headers.
-- Map columns to ClickHouse fields (e.g., price, street, date).
-- Click Preview to verify the data.
-- Click Import to ingest the data into ClickHouse
+- Select "Flat File" as the source
+- Select "ClickHouse" as the target
+- Click "Connect" to establish the ClickHouse - connection
+- Upload the test CSV file (backend/uploads/test_uk_price_paid.csv)
+- Click "Load Columns" to see the available columns
+- Select all columns (price, street, date)
+- Click "Preview" to verify the data
+- Click "Start Ingestion" to begin the ingestion process
 
 ![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2012.46.51.png)
+
+![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2017.11.09.png)
+
+![My Image](frontend/src/assets/Screenshot%202025-04-17%20at%2017.10.13.png)

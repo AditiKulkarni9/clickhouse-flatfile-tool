@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
 	"github.com/gin-gonic/gin"
 )
-
 
 // getColumnTypes fetches column types from system.columns
 func getColumnTypes(c *gin.Context, database, table string) (map[string]string, error) {
@@ -186,25 +186,13 @@ func IngestData(c *gin.Context) {
 			return
 		}
 
-		// Log headers for debugging
-		fmt.Printf("CSV Headers: %v\n", headers)
-
-		colIndices := make([]int, len(req.Columns))
-		for i, col := range req.Columns {
-			found := false
-			for j, header := range headers {
-				if header == col {
-					colIndices[i] = j
-					found = true
-					break
-				}
-			}
-			if !found {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in CSV. Available headers: %v", col, headers)})
-				return
-			}
+		// Create a map of CSV headers to their indices
+		headerMap := make(map[string]int)
+		for i, header := range headers {
+			headerMap[header] = i
 		}
 
+		// Get target table column types
 		simpleOutputTable := strings.TrimPrefix(outputTable, "uk.")
 		columnTypes, err := getColumnTypes(c, database, simpleOutputTable)
 		if err != nil {
@@ -212,18 +200,26 @@ func IngestData(c *gin.Context) {
 			return
 		}
 
-		for _, col := range req.Columns {
-			if _, exists := columnTypes[col]; !exists {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in table %s", col, outputTable)})
+		// Validate and map columns
+		colIndices := make([]int, len(req.Columns))
+		for i, col := range req.Columns {
+			if idx, exists := headerMap[col]; exists {
+				colIndices[i] = idx
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Column %s not found in CSV. Available headers: %v", col, headers)})
 				return
 			}
 		}
 
+		// Prepare the INSERT query
 		placeholders := strings.Repeat("?, ", len(req.Columns))
 		placeholders = placeholders[:len(placeholders)-2]
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", outputTable, strings.Join(req.Columns, ","), placeholders)
 
 		count := 0
+		batchSize := 1000
+		batch := make([][]interface{}, 0, batchSize)
+
 		for {
 			record, err := reader.Read()
 			if err != nil {
@@ -237,39 +233,77 @@ func IngestData(c *gin.Context) {
 			values := make([]interface{}, len(req.Columns))
 			for i, idx := range colIndices {
 				col := req.Columns[i]
+				value := record[idx]
+
 				switch columnTypes[col] {
 				case "UInt32":
 					var val uint32
-					fmt.Sscanf(record[idx], "%d", &val)
+					if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid UInt32 value for column %s: %s", col, value)})
+						return
+					}
 					values[i] = val
 				case "UInt16":
 					var val uint16
-					fmt.Sscanf(record[idx], "%d", &val)
+					if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid UInt16 value for column %s: %s", col, value)})
+						return
+					}
 					values[i] = val
 				case "UInt8":
 					var val uint8
-					fmt.Sscanf(record[idx], "%d", &val)
+					if _, err := fmt.Sscanf(value, "%d", &val); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid UInt8 value for column %s: %s", col, value)})
+						return
+					}
 					values[i] = val
 				case "Float32":
 					var val float32
-					fmt.Sscanf(record[idx], "%f", &val)
+					if _, err := fmt.Sscanf(value, "%f", &val); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid Float32 value for column %s: %s", col, value)})
+						return
+					}
 					values[i] = val
 				case "DateTime":
-					values[i] = record[idx]
+					// For String type, just pass the value directly
+					values[i] = value
 				default:
-					values[i] = record[idx]
+					values[i] = value
 				}
 			}
 
-			if err := clickhouseConn.Exec(c, query, values...); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert row: " + err.Error()})
+			batch = append(batch, values)
+			count++
+
+			// Execute batch insert when batch size is reached
+			if len(batch) >= batchSize {
+				if err := executeBatch(c, query, batch); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert batch: " + err.Error()})
+					return
+				}
+				batch = batch[:0]
+			}
+		}
+
+		// Execute remaining records
+		if len(batch) > 0 {
+			if err := executeBatch(c, query, batch); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert final batch: " + err.Error()})
 				return
 			}
-			count++
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Ingestion complete", "recordCount": count})
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source/target combination"})
 	}
+}
+
+func executeBatch(c *gin.Context, query string, batch [][]interface{}) error {
+	for _, values := range batch {
+		if err := clickhouseConn.Exec(c, query, values...); err != nil {
+			return err
+		}
+	}
+	return nil
 }
