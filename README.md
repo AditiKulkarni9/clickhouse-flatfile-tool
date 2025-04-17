@@ -1,145 +1,58 @@
-ClickHouse ↔ Flat File Ingestion Tool
+# ClickHouse ↔ Flat File Ingestion Tool
 
-A bidirectional data ingestion tool for ClickHouse and CSV files, built with Go (backend) and React with Tailwind CSS (frontend).
+A robust bidirectional data ingestion tool for seamless data transfer between ClickHouse and CSV files. Built with a Go backend and a React frontend styled with Tailwind CSS, this tool provides an intuitive interface for exporting ClickHouse tables to CSV and importing CSV files into ClickHouse.
 
-Features
+## Features
 
+- **Export ClickHouse to CSV**: Export tables (e.g., `uk_price_paid`) to CSV files with customizable column selection.
+- **Import CSV to ClickHouse**: Ingest CSV files into ClickHouse tables (e.g., `uk_price_paid_import`) with type-aware data mapping.
+- **Interactive UI**: Features "Load Columns" and "Preview" functionality for easy data inspection and validation.
+- **Type-Aware Ingestion**: Automatically maps CSV data to ClickHouse data types for accurate imports.
+- **Robust Error Handling**: Validates CSV headers, handles connection issues, and provides clear error messages.
 
+## Prerequisites
 
+- **Docker**: For running the ClickHouse server.
+- **Go**: Version 1.21 or higher.
+- **Node.js**: Version 18 or higher.
+- **ClickHouse Server**: A running ClickHouse instance.
 
+## Installation
 
-Export ClickHouse tables (e.g., uk_price_paid) to CSV.
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/AditiKulkarni9/clickhouse-flatfile-tool
+   cd clickhouse-flatfile-tool
 
+2. **Start Clickhouse server**
+    ```bash
+    docker run -d --name clickhouse-server -p 9000:9000 -p 8123:8123 clickhouse/clickhouse-server
 
-
-Import CSV files to ClickHouse tables (e.g., uk_price_paid_import).
-
-
-
-UI with Load Columns and Preview features.
-
-
-
-Type-aware ingestion for ClickHouse data types.
-
-
-
-Error handling for CSV headers and connections.
-
-Setup
-
-Prerequisites
-
-
-
-
-
-Docker
-
-
-
-Go 1.21+
-
-
-
-Node.js 18+
-
-
-
-ClickHouse server
-
-Installation
-
-
-
-
-
-Clone the repository:
-
-git clone <your-repo>
-cd clickhouse-flatfile-tool
-
-
-
-Start ClickHouse:
-
-docker run -d --name clickhouse-server -p 9000:9000 -p 8123:8123 clickhouse/clickhouse-server
-
-
-
-***Run backend***:
-
-
+3. **Run Backend:**
+    ```bash
     cd backend
     go mod tidy
     go run main.go
 
-
-
-***Run frontend***:
-
+4. **Run Frontend:**
+    ```bash
     cd frontend
     npm install
     npm run dev
 
-Usage
 
-
-
-
-
-Open http://localhost:5173.
-
-
-
-ClickHouse → Flat File:
-
-
-
-
-
-Select ClickHouse source, CSV target.
-
-
-
-Choose uk_price_paid, click "Load Columns".
-
-
-
-Select columns (e.g., price, postcode1), click "Preview".
-
-
-
-Start ingestion.
-
-
-
-Flat File → ClickHouse:
-
-
-
-
-
-Upload backend/Uploads/uk_price_paid.csv.
-
-
-
-Click "Load Columns", select columns (price, street, date).
-
-
-
-Click "Preview", then ingest.
-
-Testing
-
-
-
-
-
-Test CSV: backend/Uploads/uk_price_paid.csv (1000 rows, headers: price,street,date).
-
-
-
-Verify:
-
-SELECT COUNT(*) FROM uk.uk_price_paid; -- 25898706
+## Usage
+- Access the Application: Open your browser and navigate to http://localhost:5173.
+- ClickHouse to CSV Export:
+- Select ClickHouse as the source and CSV as the target.
+- Choose a table (e.g., uk_price_paid).
+- Click Load Columns to view available columns.
+- Select desired columns (e.g., price, postcode1).
+- Click Preview to inspect the data.
+- Click Export to download the CSV file.
+- CSV to ClickHouse Import:
+- Upload a CSV file (e.g., backend/Uploads/uk_price_paid.csv).
+- Click Load Columns to display the CSV headers.
+- Map columns to ClickHouse fields (e.g., price, street, date).
+- Click Preview to verify the data.
+- Click Import to ingest the data into ClickHouse
