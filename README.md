@@ -44,9 +44,9 @@ A robust bidirectional data ingestion tool for seamless data transfer between Cl
 ## Usage
 - Access the Application: Open your browser and navigate to http://localhost:5173.
 - ClickHouse to CSV Export:
-- Select ClickHouse as the source and CSV as the target.
-**Username: default**
-**Password: (leave empty if you haven't set a password, or enter your password if you have)**
+- Select ClickHouse as the source and CSV as the target. <br>
+**Username: default** <br>
+**Password: (leave empty if you haven't set a password, or enter your password if you have)**<br>
 - Choose a table (e.g., uk_price_paid).
 - Click Load Columns to view available columns.
 - Select desired columns (e.g., price, postcode1).
