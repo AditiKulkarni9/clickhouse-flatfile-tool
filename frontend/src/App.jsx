@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { FaCheckCircle, FaExclamationTriangle, FaSpinner, FaDatabase, FaFileAlt, FaArrowRight } from 'react-icons/fa';
 import './App.css';
+import JWTTokenGenerator from './components/JWTTokenGenerator';
 
 function App() {
     const [sourceType, setSourceType] = useState('');
@@ -11,6 +12,7 @@ function App() {
         port: '9000',
         database: 'uk',
         user: 'default',
+        password: '',
         jwtToken: '',
     });
     const [flatFileConfig, setFlatFileConfig] = useState({ file: null, delimiter: ',', filePath: '' });
@@ -121,6 +123,13 @@ function App() {
         } catch (err) {
             setStatus({ message: `Error: ${err.response?.data?.error || err.message}`, type: 'error' });
         }
+    };
+
+    const handleTokenGenerated = (token) => {
+        setClickHouseConfig(prev => ({
+            ...prev,
+            jwtToken: token
+        }));
     };
 
     const isConnectDisabled = !sourceType || !targetType || 
@@ -251,17 +260,31 @@ function App() {
                                     onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, user: e.target.value })}
                                 />
                             </div>
+                            <div className="space-y-2">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    placeholder="Enter password"
+                                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value={clickHouseConfig.password}
+                                    onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, password: e.target.value })}
+                                />
+                                <p className="text-xs text-gray-500">Required for authentication with ClickHouse</p>
+                            </div>
                             <div className="space-y-2 md:col-span-2">
                                 <label htmlFor="jwtToken" className="block text-sm font-medium text-gray-700">JWT Token (Optional)</label>
                                 <input
                                     id="jwtToken"
                                     type="password"
-                                    placeholder="Enter JWT token if required"
+                                    placeholder="Enter JWT token (optional)"
                                     className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     value={clickHouseConfig.jwtToken}
                                     onChange={(e) => setClickHouseConfig({ ...clickHouseConfig, jwtToken: e.target.value })}
                                 />
+                                <p className="text-xs text-gray-500">Optional: For JWT authentication if supported by your ClickHouse server</p>
                             </div>
+                            <JWTTokenGenerator onTokenGenerated={handleTokenGenerated} />
                         </div>
                         <div className="mt-6">
                             <button

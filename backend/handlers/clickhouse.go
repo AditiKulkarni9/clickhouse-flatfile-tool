@@ -19,29 +19,36 @@ func ConnectClickHouse(c *gin.Context) {
 		Port     string `json:"port"`
 		Database string `json:"database"`
 		User     string `json:"user"`
+		Password string `json:"password"`
 		JWToken  string `json:"jwtToken"`
 	}
 	if err := c.ShouldBindJSON(&config); err != nil {
-        log.Println("Error binding JSON: ", err)
+		log.Println("Error binding JSON: ", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	log.Println("Connecting to ClickHouse...")
-    log.Printf("Host: %s, Port: %s, Database: %s, User: %s, JWToken: %s", config.Host, config.Port, config.Database, config.User, config.JWToken)
+	log.Printf("Host: %s, Port: %s, Database: %s, User: %s", config.Host, config.Port, config.Database, config.User)
 
-	conn, err := clickhouse.Open(&clickhouse.Options{
+	// Create connection options
+	options := &clickhouse.Options{
 		Addr: []string{fmt.Sprintf("%s:%s", config.Host, config.Port)},
 		Auth: clickhouse.Auth{
 			Database: config.Database,
 			Username: config.User,
+			// Use password for authentication
+			Password: config.Password,
 		},
-	})
+	}
+
+	conn, err := clickhouse.Open(options)
 	if err != nil {
-		log.Println("Connection failed1: ", err)
+		log.Println("Connection failed: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Connection failed: " + err.Error()})
 		return
 	}
+
 	if err := conn.Ping(c); err != nil {
 		log.Println("Ping failed: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ping failed: " + err.Error()})

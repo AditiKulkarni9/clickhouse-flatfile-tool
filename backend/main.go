@@ -36,6 +36,7 @@ func setupRouter() *gin.Engine {
 	router.GET("/columns/flatfile", handlers.GetFlatFileColumns)
 	router.POST("/ingest", handlers.IngestData)
 	router.POST("/preview", handlers.PreviewData)
+	router.POST("/auth/token", handlers.GenerateJWTToken)
 
 	return router
 }
